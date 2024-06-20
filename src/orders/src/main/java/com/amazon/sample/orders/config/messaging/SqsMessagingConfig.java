@@ -18,23 +18,41 @@
 
 package com.amazon.sample.orders.config.messaging;
 
-import com.amazon.sample.orders.messaging.MessagingProvider;
-import com.amazon.sample.orders.messaging.inmemory.InMemoryMessagingProvider;
+import com.amazon.sample.orders.messaging.sqs.SqsMessagingProvider;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration;
+import io.awspring.cloud.autoconfigure.sqs.SqsProperties;
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@ConditionalOnProperty(prefix = "retail.orders.messaging", name = "provider", havingValue = "sqs")
 @Slf4j
-@ConditionalOnProperty(prefix = "retail.orders.messaging", name = "provider", havingValue = "in-memory")
-public class InMemoryMessagingConfig {
-    @Bean
-    public MessagingProvider messagingProvider() {
-        log.warn("Creating in-memory messaging provider");
+public class SqsMessagingConfig extends SqsAutoConfiguration {
 
-        return new InMemoryMessagingProvider();
+    public SqsMessagingConfig(SqsProperties sqsProperties) {
+      super(sqsProperties);
+    }
+
+    @Value("${retail.orders.messaging.sqs.topic}")
+    private String messageQueueTopic;
+
+    @Bean
+    public SqsAsyncClient sqsQueue() {
+        return SqsAsyncClient.builder().build();
+    }
+
+    @Bean
+    public SqsMessagingProvider messagingProvider(SqsAsyncClient amazonSqs, ObjectMapper mapper) {
+        log.info("Creating SQS messaging provider");
+
+        return new SqsMessagingProvider(messageQueueTopic, SqsTemplate.newSyncTemplate(amazonSqs), mapper);
     }
 }

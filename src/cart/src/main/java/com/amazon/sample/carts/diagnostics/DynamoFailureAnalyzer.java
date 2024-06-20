@@ -16,25 +16,18 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.amazon.sample.orders.config.messaging;
+ package com.amazon.sample.carts.diagnostics;
 
-import com.amazon.sample.orders.messaging.MessagingProvider;
-import com.amazon.sample.orders.messaging.inmemory.InMemoryMessagingProvider;
+import org.springframework.boot.diagnostics.AbstractFailureAnalyzer;
+import org.springframework.boot.diagnostics.FailureAnalysis;
 
-import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-@Slf4j
-@ConditionalOnProperty(prefix = "retail.orders.messaging", name = "provider", havingValue = "in-memory")
-public class InMemoryMessagingConfig {
-    @Bean
-    public MessagingProvider messagingProvider() {
-        log.warn("Creating in-memory messaging provider");
-
-        return new InMemoryMessagingProvider();
+public class DynamoFailureAnalyzer extends AbstractFailureAnalyzer<DynamoDbException> {
+    @Override
+    protected FailureAnalysis analyze(Throwable rootFailure, DynamoDbException cause) {
+        return new FailureAnalysis(
+            "An error occurred when accessing Amazon DynamoDB: \n\n"+cause.getMessage(), 
+      "Check that the DynamoDB table has been created and your IAM credentials are configured with the appropriate access.", cause);
     }
 }

@@ -16,25 +16,36 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.amazon.sample.orders.config.messaging;
+package com.amazon.sample.orders.messaging.sqs;
 
 import com.amazon.sample.orders.messaging.MessagingProvider;
-import com.amazon.sample.orders.messaging.inmemory.InMemoryMessagingProvider;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import lombok.extern.slf4j.Slf4j;
+import io.awspring.cloud.sqs.operations.SqsOperations;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+public class SqsMessagingProvider implements MessagingProvider {
 
-@Configuration
-@Slf4j
-@ConditionalOnProperty(prefix = "retail.orders.messaging", name = "provider", havingValue = "in-memory")
-public class InMemoryMessagingConfig {
-    @Bean
-    public MessagingProvider messagingProvider() {
-        log.warn("Creating in-memory messaging provider");
+    private final String messageQueueTopic;
+    private final SqsOperations blockingTemplate;
+    private final ObjectMapper mapper;
 
-        return new InMemoryMessagingProvider();
+    public SqsMessagingProvider(String messageQueueTopic, SqsOperations blockingTemplate, ObjectMapper mapper) {
+        this.blockingTemplate = blockingTemplate;
+        this.messageQueueTopic = messageQueueTopic;
+        this.mapper = mapper;
+    }
+
+    @Override
+    public void publishEvent(Object event) {
+        blockingTemplate.send(to -> {
+            try {
+                to.queue(messageQueueTopic)
+                    .payload(mapper.writeValueAsString(event))
+                    .delaySeconds(10);
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+        });
     }
 }

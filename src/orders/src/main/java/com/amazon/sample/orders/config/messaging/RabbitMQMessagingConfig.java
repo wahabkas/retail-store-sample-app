@@ -20,28 +20,36 @@ package com.amazon.sample.orders.config.messaging;
 
 import com.amazon.sample.orders.messaging.MessagingProvider;
 import com.amazon.sample.orders.messaging.rabbitmq.RabbitMQMessagingProvider;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistrar;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.Primary;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 
 @Configuration
-@Profile("rabbitmq")
-public class RabbitMQMessagingConfig implements RabbitListenerConfigurer {
+@Slf4j
+@ConditionalOnProperty(prefix = "retail.orders.messaging", name = "provider", havingValue = "rabbitmq")
+public class RabbitMQMessagingConfig extends RabbitAutoConfiguration implements RabbitListenerConfigurer  {
     public static final String EXCHANGE_NAME = "orders-exchange";
 
     public static final String ORDERS_ORDERS_QUEUE = "orders-orders-queue";
 
     @Bean
     public MessagingProvider messagingProvider(RabbitTemplate template) {
+        log.info("Creating RabbitMQ messaging provider");
+
         return new RabbitMQMessagingProvider(template);
     }
 
@@ -61,7 +69,8 @@ public class RabbitMQMessagingConfig implements RabbitListenerConfigurer {
     }
 
     @Bean
-    public RabbitTemplate rabbitTemplate(final ConnectionFactory connectionFactory) {
+    @Primary
+    public RabbitTemplate customRabbitTemplate(final ConnectionFactory connectionFactory) {
         final RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMessageConverter(producerJackson2MessageConverter());
         return rabbitTemplate;
